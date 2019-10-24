@@ -1,16 +1,22 @@
 cmake_minimum_required (VERSION 2.6)
 
-project (UCR-SUITE)
+project (UCR-SUITE CXX)
 set (UCR-SUITE_VERSION_MAJOR 1)
-set (UCR-SUITE_VERSION_MINOR 0)
+set (UCR-SUITE_VERSION_MINOR 1)
 
-#Bring the headers, such as Student.h into the project
+set(CMAKE_CXX_STANDARD 11)
+
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_DEBUG_LIBS OFF)
+set(Boost_USE_RELEASE_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost 1.71.0 COMPONENTS program_options REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+
 include_directories(include)
-
-#Can manually add the sources using the set command as follows:
-set(SOURCES src/UCR_kNNDTW.cpp)
-
-#However, the file(GLOB...) allows for wildcard additions:
-#file(GLOB SOURCES "src/*.cpp")
+set(SOURCES src/UCRDTW_kNN.cpp)
+set(CXX_FLAGS -g -Wall)
 
 add_executable(kNNDTW ${SOURCES})
+target_link_libraries(kNNDTW ${Boost_LIBRARIES})

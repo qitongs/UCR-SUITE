@@ -3,7 +3,7 @@
 // Modified from UCR_SUITE
 //
 
-#include "../include/UCR_kNNDTW.h"
+#include "UCRDTW_kNN.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,13 +11,6 @@
 #include <time.h>
 #include <iostream>
 #include <queue>
-
-#define min(x,y) ((x)<(y)?(x):(y))
-#define max(x,y) ((x)>(y)?(x):(y))
-#define dist(x,y) ((x-y)*(x-y))
-
-/// Pseudo infinite number for this code
-#define INF 1e20
 
 using namespace std;
 
@@ -730,7 +723,7 @@ int main(  int argc , char *argv[] )
     printf("\n");
 
     /// Note that loc and i are long long.
-    for (int i = 0; i < num_neighbors; ++ i) {
+    for (int m = 0; m < num_neighbors; ++ m) {
         hit current = bsf_pq.top();
         cout << "Location : " << current.location << endl;
         cout << "Distance : " << sqrt(current.distance) << endl;
