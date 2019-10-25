@@ -16,7 +16,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 include_directories(include)
 set(SOURCES src/UCRDTW_kNN.cpp)
-set(CXX_FLAGS -g -Wall)
+set(CXX_FLAGS -g -Wall -pthread)
 
 add_executable(kNNDTW ${SOURCES})
 target_link_libraries(kNNDTW ${Boost_LIBRARIES})

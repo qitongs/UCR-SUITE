@@ -24,6 +24,7 @@ public:
         if (cores == 0) {
             error(6);
         }
+
         cout << "Num of cores: " << cores << endl;
         this->create_threads(cores);
     }

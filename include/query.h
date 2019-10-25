@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 #include "utils.h"
 #include "bounds.h"
 
@@ -16,7 +17,7 @@ public:
     int *sorted_indexes;
     double *normalized_points, *sorted_normalized_points, *sorted_upper_envelop, *sorted_lower_envelop;
 
-    Query(FILE *query_file, int length, int warping_window) {
+    Query(ifstream &query_ifs, int length, int warping_window) {
         auto points = (double *) malloc(sizeof(double) * length);
         auto upper_envelop = (double *) malloc(sizeof(double) * length);
         auto lower_envelop = (double *) malloc(sizeof(double) * length);
@@ -34,15 +35,12 @@ public:
             error(1);
         }
 
-        double sum = 0, squared_sum = 0, point, mean, std;
+        double sum = 0, squared_sum = 0, mean, std;
 
         for (int i = 0; i < length; ++i) {
-            if (fscanf(query_file, "%lf", &point) == EOF) {
-                error(5);
-            }
-            sum += point;
-            squared_sum += (point * point);
-            points[i] = point;
+            query_ifs >> points[i];
+            sum += points[i];
+            squared_sum += (points[i] * points[i]);
         }
 
         mean = sum / length;

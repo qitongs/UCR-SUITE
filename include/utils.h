@@ -1,18 +1,18 @@
 /* 
  * File:   utils.h
- * Author: michele, Qitong Wang
+ * Author: Qitong Wang
  *
- * Created on October 25, 2014, 8:41 AM
  * Modified on October 24, 2019, 15:03 PM
  */
 
 #ifndef UTILS_H
-#define    UTILS_H
+#define UTILS_H
 
 #include <iostream>
 #include <vector>
-#include <numeric>      // std::iota
-#include <algorithm>    // std::sort
+#include <numeric>
+#include <algorithm>
+#include <string>
 
 #define min(x, y) ((x)<(y)?(x):(y))
 #define max(x, y) ((x)>(y)?(x):(y))

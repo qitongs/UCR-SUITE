@@ -11,8 +11,9 @@
 
 class Parameters {
 public:
-    string database_filename;
-    string queries_filename;
+    string database_path;
+    string queries_path;
+    string results_path;
     int query_length;
     int warping_window;
     int num_neighbors;
@@ -27,10 +28,9 @@ public:
         bpo::options_description desc("Allowed options");
         desc.add_options()
                 ("help", "Help message")
-                ("db", bpo::value<string>(&this->database_filename)->required(), "Sequences database")
-                ("q", bpo::value<string>(&this->queries_filename)->required(), "Queries")
-                // TODO depreciate the parameter of query length l
-                ("l", bpo::value<int>(&this->query_length)->required(), "Query length")
+                ("db", bpo::value<string>(&this->database_path)->required(), "Sequences database path")
+                ("q", bpo::value<string>(&this->queries_path)->required(), "Queries path")
+                ("r", bpo::value<string>(&this->results_path)->required(), "Results path")
                 ("w", bpo::value<double>(), "DTW warping ratio")
                 ("k", bpo::value<int>(), "k in kNN");
 

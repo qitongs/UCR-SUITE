@@ -5,12 +5,14 @@
 #ifndef UCR_SUITE_SEQUENCE_H
 #define UCR_SUITE_SEQUENCE_H
 
+#include <fstream>
+
 class Sequence {
 public:
     int length;
     double *points;
 
-    Sequence(FILE *database_file, int length) {
+    Sequence(ifstream &sequence_ifs, int length) {
         this->length = length;
         this->points = (double *) malloc(sizeof(double) * length);
 
@@ -18,14 +20,9 @@ public:
             error(1);
         }
 
-        double point;
         for (int i = 0; i < length; ++i) {
-            if (fscanf(database_file, "%lf", &point) == EOF) {
-                error(5);
-            }
-            points[i] = point;
+            sequence_ifs >> points[i];
         }
-
     }
 
     ~Sequence() {

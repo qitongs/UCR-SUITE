@@ -6,9 +6,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
-#include <ctime>
 #include <iostream>
 #include <queue>
+#include <vector>
+#include <boost/thread.hpp>
+
 #include "bounds.h"
 #include "distances.h"
 #include "parameters.h"
@@ -38,10 +40,9 @@ void cumulate(double *cumulated, const double *original, int length) {
     }
 }
 
-void conduct_query(const Sequence *sequence, const Query *query, const Parameters *parameters) {
+void conduct_query(const Sequence *sequence, const Query *query, const Parameters *parameters, int sequence_id, int query_id, boost::mutex *results_mutex) {
     bool to_skip = false;
-    int i, num_to_skip = -1, next = 0, pruned_by_kim = 0, pruned_by_keogh = 0, pruned_by_keogh_2 = 0;
-    int epoch_size, num_epoches = 0, to_calculate, start, position_in_epoch, location;
+    int i, num_to_skip = -1, next = 0, epoch_size, num_epoches = 0, to_calculate, start, position_in_epoch, location;
     int overlap = (int) ((float) query->length * parameters->overlap_ratio);
     double sum, squared_sum, mean, std, bsf = INF, distance = 0, lb_kim = 0, lb_keogh_1 = 0, lb_keogh_2 = 0;
     priority_queue<Hit, vector<Hit>, compare> bsf_pq;
@@ -54,6 +55,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     auto cumulative_bounds_keogh = (double *) malloc(sizeof(double) * query->length);
     auto bounds_keogh_1 = (double *) malloc(sizeof(double) * query->length);
     auto bounds_keogh_2 = (double *) malloc(sizeof(double) * query->length);
+
     if (buffer == nullptr || upper_envelop == nullptr || lower_envelop == nullptr || current == nullptr ||
         current_normalized == nullptr || cumulative_bounds_keogh == nullptr || bounds_keogh_1 == nullptr ||
         bounds_keogh_2 == nullptr) {
@@ -108,7 +110,6 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             lb_kim = lb_kim_hierarchy(current, query->normalized_points, start, query->length, mean, std, bsf);
 
             if (lb_kim >= bsf) {
-                pruned_by_kim += 1;
                 goto UPDATE_STATISTICS;
             }
 
@@ -117,7 +118,6 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                                              query->sorted_lower_envelop, bounds_keogh_1, start, query->length, mean,
                                              std, bsf);
             if (lb_keogh_1 >= bsf) {
-                pruned_by_keogh += 1;
                 goto UPDATE_STATISTICS;
             }
 
@@ -131,14 +131,13 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                                                   lower_envelop + position_in_epoch, upper_envelop + position_in_epoch,
                                                   query->length, mean, std, bsf);
             if (lb_keogh_2 >= bsf) {
-                pruned_by_keogh_2 += 1;
                 goto UPDATE_STATISTICS;
             }
 
             cumulate(cumulative_bounds_keogh, lb_keogh_1 > lb_keogh_2 ? bounds_keogh_1 : bounds_keogh_2, query->length);
 
             distance = dtw(current_normalized, query->normalized_points, cumulative_bounds_keogh, query->length,
-                       parameters->warping_window, bsf);
+                           parameters->warping_window, bsf);
 
             if (distance < bsf) {
                 location = num_epoches * (parameters->epoch - query->length + 1) + to_calculate - query->length + 1;
@@ -167,38 +166,57 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     free(bounds_keogh_1);
     free(bounds_keogh_2);
 
-    for (i = 0; i < parameters->num_neighbors; ++i) {
-        cout << "Location : " << bsf_pq.top().location << endl;
-        cout << "Distance : " << sqrt(bsf_pq.top().distance) << endl;
-        bsf_pq.pop();
+    {
+        boost::mutex::scoped_lock lock(*results_mutex);
+        ofstream results_ofs(parameters->results_path, ios::app);
+        if (!results_ofs) {
+            error(2);
+        }
+        for (i = 0; i < parameters->num_neighbors; ++i) {
+            results_ofs << sequence_id << " " << query_id << " " << sqrt(bsf_pq.top().distance) << " " << bsf_pq.top().location << " " << query->length << endl;
+            bsf_pq.pop();
+        }
+        results_ofs.close();
     }
 }
 
 int main(int argc, char *argv[]) {
-    double start_time = clock();
-
+    boost::mutex results_mutex;
     Parameters parameters(argc, argv);
-    FILE *database_fp = fopen(parameters.database_filename.c_str(), "r");
-    FILE *queries_fp = fopen(parameters.queries_filename.c_str(), "r");
-    if (database_fp == nullptr || queries_fp == nullptr) {
+
+    ifstream database_ifs(parameters.database_path);
+    ifstream queries_ifs(parameters.queries_path);
+    remove(parameters.results_path.c_str());
+
+    if (!database_ifs || !queries_ifs) {
         error(2);
     }
 
-    int sequence_length = 1000000;
-    if (sequence_length < parameters.query_length) {
-        cout << "queried sequence not long enough" << endl;
-        exit(1);
-    }
+    int size, length;
 
-    Sequence sequence(database_fp, sequence_length);
-    Query query(queries_fp, parameters.query_length, parameters.warping_window);
-    // TODO reserved for multiple queries
-    fclose(queries_fp);
-    fclose(database_fp);
+    database_ifs >> size;
+    vector<const Sequence *> sequences;
+    for (int i = 0; i < size; ++i) {
+        database_ifs >> length;
+        sequences.push_back(new Sequence(database_ifs, length));
+    }
+    database_ifs.close();
+
+    queries_ifs >> size;
+    vector<const Query *> queries;
+    for (int i = 0; i < size; ++i) {
+        queries_ifs >> length;
+        queries.push_back(new Query(queries_ifs, length, parameters.warping_window));
+    }
+    queries_ifs.close();
 
     ThreadPool threadPool;
-    threadPool.enqueue(boost::bind(conduct_query, &sequence, &query, &parameters));
+    for (int i = 0; i < (int) sequences.size(); ++i) {
+        for (int j = 0; j < (int) queries.size(); ++j) {
+//            conduct_query(sequences[i], queries[j], &parameters, i, j);
+            threadPool.enqueue(boost::bind(conduct_query, sequences[i], queries[j], &parameters, i, j, &results_mutex));
+        }
+    }
 
-    cout << "Total Execution Time: " << (clock() - start_time) / CLOCKS_PER_SEC << " sec" << endl;
     return 0;
 }
