@@ -9,15 +9,19 @@
 #include <boost/program_options.hpp>
 #include "utils.h"
 
-class parameters {
+class Parameters {
 public:
     string database_filename;
     string queries_filename;
     int query_length;
     int warping_window;
     int num_neighbors;
+    /// For every EPOCH points, all cumulative values, such sum, squared_sum, will be restarted for reducing the floating point error.
+    int epoch = 100000;
+    // TODO overlap_ratio is set to prune contiguous matches. Replace with better methods
+    float overlap_ratio = 0.5;
 
-    parameters(int argc, char *argv[]) {
+    Parameters(int argc, char *argv[]) {
         namespace bpo = boost::program_options;
 
         bpo::options_description desc("Allowed options");

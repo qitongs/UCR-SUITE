@@ -45,6 +45,7 @@ void error(int id) {
         case 3: cout << "ERROR: Can't create Output File" << endl; break;
         case 4: cout << "ERROR: Invalid Arguments" << endl; break;
         case 5: cout << "ERROR: Input file broken" << endl; break;
+        case 6: cout << "ERROR: Couldn't get CPU info" << endl; break;
         default: cout << "ERROR: Un-managed" << endl;
     }
     exit(1);

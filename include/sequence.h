@@ -5,12 +5,12 @@
 #ifndef UCR_SUITE_SEQUENCE_H
 #define UCR_SUITE_SEQUENCE_H
 
-class sequence {
+class Sequence {
 public:
     int length;
     double *points;
 
-    sequence(FILE *database_file, int length) {
+    Sequence(FILE *database_file, int length) {
         this->length = length;
         this->points = (double *) malloc(sizeof(double) * length);
 
@@ -28,7 +28,7 @@ public:
 
     }
 
-    ~sequence() {
+    ~Sequence() {
         free(this->points);
     }
 };

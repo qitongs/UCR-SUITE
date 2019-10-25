@@ -13,7 +13,7 @@
 /// "Faster Retrieval with a Two-Pass Dynamic-Time-Warping Lower Bound", Pattern Recognition 42(9), 2009.
 void lower_upper_lemire(double * t, int len, int r, double * l, double * u)
 {
-    struct circular_array du, dl;
+    struct CircularArray du, dl;
 
     init(&du, 2 * r + 2);
     init(&dl, 2 * r + 2);

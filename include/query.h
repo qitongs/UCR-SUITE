@@ -10,13 +10,13 @@
 #include "utils.h"
 #include "bounds.h"
 
-class query {
+class Query {
 public:
     int length;
     int *sorted_indexes;
     double *normalized_points, *sorted_normalized_points, *sorted_upper_envelop, *sorted_lower_envelop;
 
-    query(FILE *query_file, int length, int warping_window) {
+    Query(FILE *query_file, int length, int warping_window) {
         auto points = (double *) malloc(sizeof(double) * length);
         auto upper_envelop = (double *) malloc(sizeof(double) * length);
         auto lower_envelop = (double *) malloc(sizeof(double) * length);
@@ -65,7 +65,7 @@ public:
         free(lower_envelop);
     }
 
-    ~query() {
+    ~Query() {
         free(this->sorted_indexes);
         free(this->normalized_points);
         free(this->sorted_upper_envelop);

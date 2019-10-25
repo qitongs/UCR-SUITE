@@ -8,7 +8,7 @@
 /// TODO depreciate this file by boost's circular buffer
 
 /// Data structure (circular array) for finding minimum and maximum for LB_Keogh envolop
-struct circular_array
+struct CircularArray
 {
     int * dq;
     int size, capacity;
@@ -16,7 +16,7 @@ struct circular_array
 };
 
 /// Initial the queue at the beginning step of envelop calculation
-void init(circular_array * d, int capacity)
+void init(CircularArray * d, int capacity)
 {
     d->capacity = capacity;
     d->size = 0;
@@ -26,13 +26,13 @@ void init(circular_array * d, int capacity)
 }
 
 /// Destroy the queue
-void destroy(circular_array * d)
+void destroy(CircularArray * d)
 {
     free(d->dq);
 }
 
 /// Insert to the queue at the back
-void push_back(struct circular_array * d, int v)
+void push_back(struct CircularArray * d, int v)
 {
     d->dq[d->r] = v;
     d->r --;
@@ -42,7 +42,7 @@ void push_back(struct circular_array * d, int v)
 }
 
 /// Delete the current (front) element from queue
-void pop_front(struct circular_array * d)
+void pop_front(struct CircularArray * d)
 {
     d->f --;
     if (d->f < 0)
@@ -51,14 +51,14 @@ void pop_front(struct circular_array * d)
 }
 
 /// Delete the last element from queue
-void pop_back(struct circular_array * d)
+void pop_back(struct CircularArray * d)
 {
     d->r = (d->r + 1) % d->capacity;
     d->size --;
 }
 
 /// Get the value at the current position of the circular queue
-int front(struct circular_array * d)
+int front(struct CircularArray * d)
 {
     int aux = d->f - 1;
     if (aux < 0)
@@ -67,14 +67,14 @@ int front(struct circular_array * d)
 }
 
 /// Get the value at the last position of the circular queueint back(struct circular_array *d)
-int back(struct circular_array * d)
+int back(struct CircularArray * d)
 {
     int aux = (d->r + 1) % d->capacity;
     return d->dq[aux];
 }
 
 /// Check whether or not the queue is empty
-int empty(struct circular_array * d)
+int empty(struct CircularArray * d)
 {
     return d->size == 0;
 }
