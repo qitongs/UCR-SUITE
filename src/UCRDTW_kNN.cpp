@@ -31,7 +31,7 @@ struct compare {
     }
 };
 
-void cumulate(double *cumulated, double *original, int length) {
+void cumulate(double *cumulated, const double *original, int length) {
     cumulated[length - 1] = original[length - 1];
     for (int i = length - 2; i >= 0; --i) {
         cumulated[i] = cumulated[i + 1] + original[i];
@@ -115,8 +115,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             // z_normalization of t will be computed on the fly.
             lb_keogh_1 = lb_keogh_cumulative(query->sorted_indexes, current, query->sorted_upper_envelop,
                                              query->sorted_lower_envelop, bounds_keogh_1, start, query->length, mean,
-                                             std,
-                                             bsf);
+                                             std, bsf);
             if (lb_keogh_1 >= bsf) {
                 pruned_by_keogh += 1;
                 goto UPDATE_STATISTICS;

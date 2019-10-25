@@ -32,8 +32,7 @@ public:
                 // TODO depreciate the parameter of query length l
                 ("l", bpo::value<int>(&this->query_length)->required(), "Query length")
                 ("w", bpo::value<double>(), "DTW warping ratio")
-                ("k", bpo::value<int>(), "k in kNN")
-                ;
+                ("k", bpo::value<int>(), "k in kNN");
 
         bpo::variables_map vm;
         bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
