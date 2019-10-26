@@ -12,22 +12,26 @@ public:
     int length;
     double *points;
 
-    Sequence(ifstream &sequence_ifs, int length) {
-        this->length = length;
-        this->points = (double *) malloc(sizeof(double) * length);
+    Sequence(ifstream &sequence_ifs, int length);
 
-        if (this->points == nullptr) {
-            error(1);
-        }
-
-        for (int i = 0; i < length; ++i) {
-            sequence_ifs >> points[i];
-        }
-    }
-
-    ~Sequence() {
-        free(this->points);
-    }
+    ~Sequence();
 };
+
+Sequence::Sequence(ifstream &sequence_ifs, int length) {
+    this->length = length;
+    this->points = (double *) malloc(sizeof(double) * length);
+
+    if (this->points == nullptr) {
+        error(1);
+    }
+
+    for (int i = 0; i < length; ++i) {
+        sequence_ifs >> points[i];
+    }
+}
+
+Sequence::~Sequence() {
+    free(this->points);
+}
 
 #endif //UCR_SUITE_SEQUENCE_H

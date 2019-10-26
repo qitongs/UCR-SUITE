@@ -40,7 +40,9 @@ void cumulate(double *cumulated, const double *original, int length) {
     }
 }
 
-void conduct_query(const Sequence *sequence, const Query *query, const Parameters *parameters, int sequence_id, int query_id, boost::mutex *results_mutex) {
+void
+conduct_query(const Sequence *sequence, const Query *query, const Parameters *parameters, int sequence_id, int query_id,
+              boost::mutex *results_mutex) {
     bool to_skip = false;
     int i, num_to_skip = -1, next = 0, epoch_size, num_epoches = 0, to_calculate, start, position_in_epoch, location;
     int overlap = (int) ((float) query->length * parameters->overlap_ratio);
@@ -168,12 +170,14 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
     {
         boost::mutex::scoped_lock lock(*results_mutex);
-        ofstream results_ofs(parameters->results_path, ios::app);
+        // TODO asynchronous file write using asio
+        ofstream results_ofs(parameters->results_path, std::ofstream::out | std::ofstream::app);
         if (!results_ofs) {
             error(2);
         }
         for (i = 0; i < parameters->num_neighbors; ++i) {
-            results_ofs << sequence_id << " " << query_id << " " << sqrt(bsf_pq.top().distance) << " " << bsf_pq.top().location << " " << query->length << endl;
+            results_ofs << sequence_id << " " << query_id << " " << sqrt(bsf_pq.top().distance) << " "
+                        << bsf_pq.top().location << " " << query->length << endl;
             bsf_pq.pop();
         }
         results_ofs.close();
@@ -181,6 +185,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 }
 
 int main(int argc, char *argv[]) {
+    // TODO synchronization problem
     boost::mutex results_mutex;
     Parameters parameters(argc, argv);
 
@@ -213,7 +218,6 @@ int main(int argc, char *argv[]) {
     ThreadPool threadPool;
     for (int i = 0; i < (int) sequences.size(); ++i) {
         for (int j = 0; j < (int) queries.size(); ++j) {
-//            conduct_query(sequences[i], queries[j], &parameters, i, j);
             threadPool.enqueue(boost::bind(conduct_query, sequences[i], queries[j], &parameters, i, j, &results_mutex));
         }
     }

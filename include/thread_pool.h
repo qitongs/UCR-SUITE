@@ -17,25 +17,22 @@
 
 #include "utils.h"
 
+typedef std::unique_ptr<boost::asio::io_service::work> work_ptr;
+typedef boost::asio::io_service io_service;
+
 class ThreadPool {
 public:
-    explicit ThreadPool() : work_(io_service_) {
-        int cores = (int) std::thread::hardware_concurrency();
-        if (cores == 0) {
-            error(6);
-        }
+    explicit ThreadPool();
 
-        cout << "Num of cores: " << cores << endl;
-        this->create_threads(cores);
-    }
-
-    explicit ThreadPool(size_t size) : work_(io_service_) {
-        this->create_threads(size);
-    }
+    explicit ThreadPool(size_t size);
 
     ~ThreadPool() {
-        io_service_.stop();
+        work_.reset();
         workers_.join_all();
+        // io_service_.stop() interrupt all threads
+        // might be commented out as threads already stops after workers_.join_all()
+        // TODO figure out why this must be commented out
+//        io_service_.stop();
     }
 
     template<class F>
@@ -45,14 +42,30 @@ public:
 
 private:
     boost::thread_group workers_;
-    boost::asio::io_service io_service_;
-    boost::asio::io_service::work work_;
+    io_service io_service_;
+    work_ptr work_;
 
-    void create_threads(int num_threads) {
-        for (size_t i = 0; i < num_threads; ++i) {
-            this->workers_.create_thread(boost::bind(&boost::asio::io_service::run, &this->io_service_));
-        }
-    }
+    void create_threads(int num_threads);
 };
+
+ThreadPool::ThreadPool() : io_service_(), work_(new work_ptr::element_type(io_service_)) {
+    int cores = (int) std::thread::hardware_concurrency();
+    if (cores == 0) {
+        error(6);
+    }
+
+    cout << "Num of cores: " << cores << endl;
+    this->create_threads(cores);
+}
+
+ThreadPool::ThreadPool(size_t size) : io_service_(), work_(new work_ptr::element_type(io_service_)) {
+    this->create_threads(size);
+}
+
+void ThreadPool::create_threads(int num_threads) {
+    for (size_t i = 0; i < num_threads; ++i) {
+        this->workers_.create_thread(boost::bind(&io_service::run, &this->io_service_));
+    }
+}
 
 #endif //UCR_SUITE_THREAD_POOL_H
