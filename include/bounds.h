@@ -8,6 +8,7 @@
 #include "circular_array.h"
 #include "utils.h"
 
+// TODO check the potential len = 0, r= 0 problem
 /// Finding the envelop of min and max value for LB_Keogh
 /// Implementation idea is introduced by Danial Lemire in his paper
 /// "Faster Retrieval with a Two-Pass Dynamic-Time-Warping Lower Bound", Pattern Recognition 42(9), 2009.

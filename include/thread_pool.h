@@ -29,8 +29,7 @@ public:
     ~ThreadPool() {
         work_.reset();
         workers_.join_all();
-        // io_service_.stop() interrupt all threads
-        // might be commented out as threads already stops after workers_.join_all()
+        // io_service_.stop() interrupt all threads, might be commented out as threads already stops after workers_.join_all()
         // TODO figure out why this must be commented out
 //        io_service_.stop();
     }
@@ -54,7 +53,7 @@ ThreadPool::ThreadPool() : io_service_(), work_(new work_ptr::element_type(io_se
         error(6);
     }
 
-    cout << "Num of cores: " << cores << endl;
+    cout << cores << " cores" << endl;
     this->create_threads(cores);
 }
 

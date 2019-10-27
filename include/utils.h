@@ -18,7 +18,6 @@
 #define max(x, y) ((x)>(y)?(x):(y))
 #define dist(x, y) ((x-y)*(x-y))
 
-/// Pseudo infinite number for this code
 #define INF 1e20
 
 using namespace std;
@@ -26,10 +25,9 @@ using namespace std;
 template<typename T>
 void sort_indexes(const T *values, int *indexes, int length) {
     iota(indexes, indexes + length, 0);
-    sort(indexes, indexes + length, [values](int i1, int i2) { return values[i1] - values[i2]; });
+    sort(indexes, indexes + length, [values](int i1, int i2) { return values[i1] > values[i2]; });
 }
 
-/// Print function for debugging
 template<typename T>
 void print_array(T *x, int len) {
     for (int i = 0; i < len; ++i)
@@ -37,7 +35,6 @@ void print_array(T *x, int len) {
     cout << endl;
 }
 
-/// If expected error happens, teminated the program.
 void error(int id) {
     switch (id) {
         case 1:
