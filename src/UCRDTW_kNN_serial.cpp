@@ -34,12 +34,16 @@ struct circular_array
     int f, r;
 };
 
+// TODO figure out why the previous version is not working
 /// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
 int comp(const void * a, const void * b)
 {
-    Index * x = (Index *) a;
-    Index * y = (Index *) b;
-    return abs(y->value) - abs(x->value);   // high to low
+    double va = abs(((Index *) a)->value);
+    double vb = abs(((Index *) b)->value);
+    return (va < vb) - (va > vb);
+//    Index * x = (Index *) a;
+//    Index * y = (Index *) b;
+//    return abs(y->value) - abs(x->value);   // high to low
 }
 
 /// Initial the queue at the beginning step of envelop calculation
@@ -522,7 +526,7 @@ int main(  int argc , char *argv[] )
         Q_tmp[i].value = q[i];
         Q_tmp[i].index = i;
     }
-    qsort(Q_tmp, m, sizeof(Index),comp);
+    qsort(Q_tmp, m, sizeof(Index), comp);
 
     /// also create another arrays for keeping sorted envelop
     for( i=0; i<m; i++)

@@ -17,7 +17,7 @@ public:
     // Cumulative values (sum, squared_sum, etc) will be restarted to reduce floating point errors for every EPOCH points
     int num_neighbors, epoch = 100000;
     long min_query_length_multiple = 100000;
-    double overlap_ratio = 0.5, warping_window = 1;
+    double overlap_ratio, warping_window = 1;
 
     Parameters(int argc, char *argv[]);
 };
@@ -50,8 +50,12 @@ Parameters::Parameters(int argc, char *argv[]) {
     }
 
     if (vm.count("w")) {
-        this->warping_window = floor(vm["w"].as<double>());
+        this->warping_window = vm["w"].as<double>();
     }
+
+    // TODO currently overlap_ratio is set to warping_window to prevent points matching to themselves
+    // But the behaviour is un-predicted as a result of z-normalization
+    this->overlap_ratio = this->warping_window;
 }
 
 #endif //UCR_SUITE_PARAMETERS_H

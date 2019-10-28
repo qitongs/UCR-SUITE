@@ -4,7 +4,7 @@ project (UCR-SUITE CXX)
 set (UCR-SUITE_VERSION_MAJOR 1)
 set (UCR-SUITE_VERSION_MINOR 1)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_DEBUG_LIBS OFF)
@@ -20,3 +20,7 @@ set(CXX_FLAGS -g -Wall -pthread)
 
 add_executable(kNNDTW ${SOURCES})
 target_link_libraries(kNNDTW ${Boost_LIBRARIES})
+
+# For test only
+add_executable(kNNDTW_serial src/UCRDTW_kNN_serial.cpp)
+add_executable(UCRDTW src/UCRDTW.cpp)

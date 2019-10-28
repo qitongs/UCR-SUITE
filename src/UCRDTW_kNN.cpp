@@ -58,10 +58,6 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
         error(1);
     }
 
-    for (i = 0; i < query->length; ++i) {
-        bounds_keogh_left[i] = 0, bounds_keogh_1[i] = 0, bounds_keogh_2[i] = 0;
-    }
-
     while (next + query->length - 1 < sequence->length) {
         if (next + parameters->epoch > sequence->length) {
             copy(sequence->points + next, sequence->points + sequence->length, buffer);
@@ -76,7 +72,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
         // TODO here buffer is not z-normalized, but in query it's z-normalized
         lower_upper_lemire(buffer, epoch_size, query->warping_window, lower_envelop, upper_envelop);
 
-        for (to_calculate = 0; to_calculate < epoch_size; to_calculate++) {
+        for (to_calculate = 0; to_calculate < epoch_size; ++to_calculate) {
             current[to_calculate % query->length] = buffer[to_calculate];
             current[(to_calculate % query->length) + query->length] = buffer[to_calculate];
 
@@ -96,14 +92,13 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
             mean = sum / query->length;
             std = sqrt(squared_sum / query->length - mean * mean);
-            position_in_epoch = to_calculate + 1 - query->length;
-
             lb_kim = lb_kim_hierarchy(current, query->normalized_points, start, query->length, mean, std, bsf);
 
             if (lb_kim >= bsf) {
                 goto UPDATE_STATISTICS;
             }
 
+            position_in_epoch = to_calculate + 1 - query->length;
             lb_keogh_1 = lb_keogh_cumulative(query->sorted_indexes, current, query->sorted_upper_envelop,
                                              query->sorted_lower_envelop, bounds_keogh_1, start, query->length, mean,
                                              std, bsf);

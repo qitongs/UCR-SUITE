@@ -9,10 +9,6 @@
 #define UTILS_H
 
 #include <iostream>
-#include <vector>
-#include <numeric>
-#include <algorithm>
-#include <string>
 
 #define min(x, y) ((x)<(y)?(x):(y))
 #define max(x, y) ((x)>(y)?(x):(y))
@@ -21,19 +17,6 @@
 #define INF 1e20
 
 using namespace std;
-
-template<typename T>
-void sort_indexes(const T *values, int *indexes, int length) {
-    iota(indexes, indexes + length, 0);
-    sort(indexes, indexes + length, [values](int i1, int i2) { return values[i1] > values[i2]; });
-}
-
-template<typename T>
-void print_array(T *x, int len) {
-    for (int i = 0; i < len; ++i)
-        cout << x[i] << " ";
-    cout << endl;
-}
 
 void error(int id) {
     switch (id) {

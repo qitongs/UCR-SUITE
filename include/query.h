@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <numeric>
 
 #include "utils.h"
 #include "bounds.h"
@@ -21,6 +22,9 @@ public:
     Query(ifstream &query_ifs, int length, int warping_window, int overlap_length);
 
     ~Query();
+
+private:
+    static void sort_indices(const double *values, int *indexes, int length);
 };
 
 Query::Query(ifstream &query_ifs, int length, int warping_window, int overlap_length) : length(length),
@@ -57,7 +61,7 @@ Query::Query(ifstream &query_ifs, int length, int warping_window, int overlap_le
     }
 
     lower_upper_lemire(this->normalized_points, length, warping_window, lower_envelop, upper_envelop);
-    sort_indexes(this->normalized_points, this->sorted_indexes, length);
+    sort_indices(this->normalized_points, this->sorted_indexes, length);
 
     for (int i = 0; i < length; ++i) {
         this->sorted_normalized_points[i] = this->normalized_points[this->sorted_indexes[i]];
@@ -76,6 +80,11 @@ Query::~Query() {
     free(this->sorted_normalized_points);
     free(this->sorted_upper_envelop);
     free(this->sorted_lower_envelop);
+}
+
+void Query::sort_indices(const double *values, int *indexes, int length) {
+    iota(indexes, indexes + length, 0);
+    sort(indexes, indexes + length, [values](int i1, int i2) { return abs(values[i1]) > abs(values[i2]); });
 }
 
 #endif //UCR_SUITE_QUERY_H
