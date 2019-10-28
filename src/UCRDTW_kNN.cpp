@@ -71,8 +71,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
         }
 
         sum = 0, squared_sum = 0;
-        // TODO here buffer is not z-normalized, but in query it's z-normalized
-        lower_upper_lemire(buffer, epoch_size, query->warping_window, lower_envelop, upper_envelop);
+        get_envelops_lemire(buffer, epoch_size, query->warping_window, lower_envelop, upper_envelop);
 
         for (to_calculate = 0; to_calculate < epoch_size; ++to_calculate) {
             subsequence[to_calculate % query->length] = buffer[to_calculate];
@@ -94,12 +93,15 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
             mean = sum / query->length;
             std = sqrt(squared_sum / query->length - mean * mean);
-            
-            // TODO bound_kim actaully won't apply when warping_window < 3
-            bound_kim = get_kim(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
 
-            if (bound_kim >= bsf) {
-                goto UPDATE_STATISTICS;
+            // TODO check kim's pruning power for long queries
+            if (query->length <= parameters->min_length_for_kim) {
+                // TODO bound_kim actaully won't apply when warping_window < 3
+                bound_kim = get_kim(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
+
+                if (bound_kim >= bsf) {
+                    goto UPDATE_STATISTICS;
+                }
             }
 
             position_in_epoch = to_calculate + 1 - query->length;

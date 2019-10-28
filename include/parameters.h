@@ -15,7 +15,7 @@ class Parameters {
 public:
     string database_path, queries_path, results_path;
     // Cumulative values (sum, squared_sum, etc) will be restarted to reduce floating point errors for every EPOCH points
-    int num_neighbors, epoch = 100000;
+    int num_neighbors, epoch = 100000, min_length_for_kim = 128;
     long min_query_length_multiple = 100000;
     double overlap_ratio, warping_window = 1;
 

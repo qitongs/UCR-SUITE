@@ -60,7 +60,7 @@ Query::Query(ifstream &query_ifs, int length, int warping_window, int overlap_le
         this->normalized_points[i] = (points[i] - mean) / std;
     }
 
-    lower_upper_lemire(this->normalized_points, length, warping_window, lower_envelop, upper_envelop);
+    get_envelops_lemire(this->normalized_points, length, warping_window, lower_envelop, upper_envelop);
     sort_indices(this->normalized_points, this->sorted_indexes, length);
 
     for (int i = 0; i < length; ++i) {

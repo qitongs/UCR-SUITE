@@ -8,50 +8,64 @@
 #include "circular_array.h"
 #include "utils.h"
 
-// TODO check the potential len = 0, r= 0 problem
+// TODO check the potential length = 0, warping_window = 0 problem
 /// Finding the envelop of min and max value for LB_Keogh
 /// Implementation idea is introduced by Danial Lemire in his paper
 /// "Faster Retrieval with a Two-Pass Dynamic-Time-Warping Lower Bound", Pattern Recognition 42(9), 2009.
-void lower_upper_lemire(double *t, int len, int r, double *l, double *u) {
-    struct CircularArray du, dl;
+void get_envelops_lemire(const double *sequence, const int length, const int warping_window, double *lower_envelop,
+                        double *upper_envelop) {
+    CircularArray upper, lower;
 
-    init(&du, 2 * r + 2);
-    init(&dl, 2 * r + 2);
+    init(&upper, 2 * warping_window + 2);
+    init(&lower, 2 * warping_window + 2);
 
-    push_back(&du, 0);
-    push_back(&dl, 0);
+    push_back(&upper, 0);
+    push_back(&lower, 0);
 
-    for (int i = 1; i < len; i++) {
-        if (i > r) {
-            u[i - r - 1] = t[front(&du)];
-            l[i - r - 1] = t[front(&dl)];
+    for (int i = 1; i < length; i++) {
+        if (i > warping_window) {
+            upper_envelop[i - warping_window - 1] = sequence[front(&upper)];
+            lower_envelop[i - warping_window - 1] = sequence[front(&lower)];
         }
-        if (t[i] > t[i - 1]) {
-            pop_back(&du);
-            while (!empty(&du) && t[i] > t[back(&du)])
-                pop_back(&du);
+
+        if (sequence[i] > sequence[i - 1]) {
+            pop_back(&upper);
+
+            while (!empty(&upper) && sequence[i] > sequence[back(&upper)]) {
+                pop_back(&upper);
+            }
         } else {
-            pop_back(&dl);
-            while (!empty(&dl) && t[i] < t[back(&dl)])
-                pop_back(&dl);
+            pop_back(&lower);
+            
+            while (!empty(&lower) && sequence[i] < sequence[back(&lower)]) {
+                pop_back(&lower);
+            }
         }
-        push_back(&du, i);
-        push_back(&dl, i);
-        if (i == 2 * r + 1 + front(&du))
-            pop_front(&du);
-        else if (i == 2 * r + 1 + front(&dl))
-            pop_front(&dl);
+
+        push_back(&upper, i);
+        push_back(&lower, i);
+
+        if (i == 2 * warping_window + 1 + front(&upper)) {
+            pop_front(&upper);
+        } else if (i == 2 * warping_window + 1 + front(&lower)) {
+            pop_front(&lower);
+        }
     }
-    for (int i = len; i < len + r + 1; i++) {
-        u[i - r - 1] = t[front(&du)];
-        l[i - r - 1] = t[front(&dl)];
-        if (i - front(&du) >= 2 * r + 1)
-            pop_front(&du);
-        if (i - front(&dl) >= 2 * r + 1)
-            pop_front(&dl);
+
+    for (int i = length; i < length + warping_window + 1; i++) {
+        upper_envelop[i - warping_window - 1] = sequence[front(&upper)];
+        lower_envelop[i - warping_window - 1] = sequence[front(&lower)];
+
+        if (i - front(&upper) >= 2 * warping_window + 1) {
+            pop_front(&upper);
+        }
+        if (i - front(&lower) >= 2 * warping_window + 1) {
+            pop_front(&lower);
+        }
     }
-    destroy(&du);
-    destroy(&dl);
+
+    destroy(&upper);
+    destroy(&lower);
 }
 
 /// Usually, LB_Kim take time O(m) for finding top,bottom,fist and last.
