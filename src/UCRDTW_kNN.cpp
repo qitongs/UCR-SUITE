@@ -40,7 +40,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                    const chrono::time_point<chrono::high_resolution_clock> *start_time,
                    atomic<int> *processed) {
     int i, num_to_skip = 0, next = 0, epoch_size = parameters->epoch, num_epoches = 0, to_calculate, start, position_in_epoch, location;
-    double sum, squared_sum, mean, std, bsf = INF, distance = 0, lb_kim = 0, bound_keogh = 0, bound_keogh_converse = 0;
+    double sum, squared_sum, mean, std, bsf = INF, distance = 0, bound_kim = 0, bound_keogh = 0, bound_keogh_converse = 0;
     priority_queue<Hit *, vector<Hit *>, compare> bsf_pq;
     Hit *hit;
     double *tighter_bounds_keogh;
@@ -94,9 +94,11 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
             mean = sum / query->length;
             std = sqrt(squared_sum / query->length - mean * mean);
-            lb_kim = get_kim_hierarchy(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
+            
+            // TODO bound_kim actaully won't apply when warping_window < 3
+            bound_kim = get_kim(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
 
-            if (lb_kim >= bsf) {
+            if (bound_kim >= bsf) {
                 goto UPDATE_STATISTICS;
             }
 

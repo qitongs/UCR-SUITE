@@ -54,51 +54,55 @@ void lower_upper_lemire(double *t, int len, int r, double *l, double *u) {
     destroy(&dl);
 }
 
-/// Calculate quick lower bound
 /// Usually, LB_Kim take time O(m) for finding top,bottom,fist and last.
 /// However, because of z-normalization the top and bottom cannot give significant benefits.
 /// And using the first and last points can be computed in constant time.
-/// The prunning power of LB_Kim is non-trivial, especially when the query is not long, say in length 128.
-double get_kim_hierarchy(double *t, double *q, int j, int len, double mean, double std, double bsf = INF) {
-    /// 1 point at front and back
-    double d, lb;
-    double x0 = (t[j] - mean) / std;
-    double y0 = (t[(len - 1 + j)] - mean) / std;
-    lb = dist(x0, q[0]) + dist(y0, q[len - 1]);
-    if (lb >= bsf) return lb;
+/// The pruning power of LB_Kim is non-trivial, especially when the query is not long, say in length 128.
+double get_kim(const double *subsequence, const double *query_normalized, const int start, const int query_length,
+               const double mean, const double std, const double bsf) {
+    double distance, partial_bound;
+    double head_0 = (subsequence[start] - mean) / std;
+    double tail_0 = (subsequence[start + query_length - 1] - mean) / std;
 
-    /// 2 points at front
-    double x1 = (t[(j + 1)] - mean) / std;
-    d = min(dist(x1, q[0]), dist(x0, q[1]));
-    d = min(d, dist(x1, q[1]));
-    lb += d;
-    if (lb >= bsf) return lb;
+    partial_bound = dist(head_0, query_normalized[0]) + dist(tail_0, query_normalized[query_length - 1]);
+    if (partial_bound >= bsf) {
+        return partial_bound;
+    }
 
-    /// 2 points at back
-    double y1 = (t[(len - 2 + j)] - mean) / std;
-    d = min(dist(y1, q[len - 1]), dist(y0, q[len - 2]));
-    d = min(d, dist(y1, q[len - 2]));
-    lb += d;
-    if (lb >= bsf) return lb;
+    double head_1 = (subsequence[(start + 1)] - mean) / std;
+    distance = min(dist(head_1, query_normalized[0]), dist(head_0, query_normalized[1]));
+    distance = min(distance, dist(head_1, query_normalized[1]));
+    partial_bound += distance;
+    if (partial_bound >= bsf) {
+        return partial_bound;
+    }
 
-    /// 3 points at front
-    double x2 = (t[(j + 2)] - mean) / std;
-    d = min(dist(x0, q[2]), dist(x1, q[2]));
-    d = min(d, dist(x2, q[2]));
-    d = min(d, dist(x2, q[1]));
-    d = min(d, dist(x2, q[0]));
-    lb += d;
-    if (lb >= bsf) return lb;
+    double tail_1 = (subsequence[(start + query_length - 2)] - mean) / std;
+    distance = min(dist(tail_1, query_normalized[query_length - 1]), dist(tail_0, query_normalized[query_length - 2]));
+    distance = min(distance, dist(tail_1, query_normalized[query_length - 2]));
+    partial_bound += distance;
+    if (partial_bound >= bsf) {
+        return partial_bound;
+    }
 
-    /// 3 points at back
-    double y2 = (t[(len - 3 + j)] - mean) / std;
-    d = min(dist(y0, q[len - 3]), dist(y1, q[len - 3]));
-    d = min(d, dist(y2, q[len - 3]));
-    d = min(d, dist(y2, q[len - 2]));
-    d = min(d, dist(y2, q[len - 1]));
-    lb += d;
+    double head_2 = (subsequence[(start + 2)] - mean) / std;
+    distance = min(dist(head_0, query_normalized[2]), dist(head_1, query_normalized[2]));
+    distance = min(distance, dist(head_2, query_normalized[2]));
+    distance = min(distance, dist(head_2, query_normalized[1]));
+    distance = min(distance, dist(head_2, query_normalized[0]));
+    partial_bound += distance;
+    if (partial_bound >= bsf) {
+        return partial_bound;
+    }
 
-    return lb;
+    double tail_2 = (subsequence[(start + query_length - 3)] - mean) / std;
+    distance = min(dist(tail_0, query_normalized[query_length - 3]), dist(tail_1, query_normalized[query_length - 3]));
+    distance = min(distance, dist(tail_2, query_normalized[query_length - 3]));
+    distance = min(distance, dist(tail_2, query_normalized[query_length - 2]));
+    distance = min(distance, dist(tail_2, query_normalized[query_length - 1]));
+    partial_bound += distance;
+
+    return partial_bound;
 }
 
 double get_keogh(const int *query_sorted_indices, const double *subsequence, double *subsequence_normalized,
