@@ -110,18 +110,17 @@ double lb_kim_hierarchy(double *t, double *q, int j, int len, double mean, doubl
 /// t     : a circular array keeping the current data.
 /// j     : index of the starting location in t
 /// cb    : (output) current bound at each position. It will be used later for early abandoning in DTW.
-double lb_keogh_cumulative(int *order, double *t, double *uo, double *lo, double *cb, int j, int len, double mean,
+double lb_keogh_cumulative(int *order, double *t, double *tz, double *uo, double *lo, double *cb, int j, int len, double mean,
                            double std, double best_so_far = INF) {
-    double lb = 0;
-    double x, d;
+    double lb = 0, d;
 
     for (int i = 0; i < len && lb < best_so_far; i++) {
-        x = (t[(order[i] + j)] - mean) / std;
+        tz[order[i]] = (t[(order[i] + j)] - mean) / std;
         d = 0;
-        if (x > uo[i])
-            d = dist(x, uo[i]);
-        else if (x < lo[i])
-            d = dist(x, lo[i]);
+        if (tz[order[i]] > uo[i])
+            d = dist(tz[order[i]], uo[i]);
+        else if (tz[order[i]] < lo[i])
+            d = dist(tz[order[i]], lo[i]);
         lb += d;
         cb[order[i]] = d;
     }

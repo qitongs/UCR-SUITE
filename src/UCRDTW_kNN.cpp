@@ -100,16 +100,12 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             }
 
             position_in_epoch = to_calculate + 1 - query->length;
-            lb_keogh_1 = lb_keogh_cumulative(query->sorted_indexes, current, query->sorted_upper_envelop,
+            lb_keogh_1 = lb_keogh_cumulative(query->sorted_indexes, current, current_normalized, query->sorted_upper_envelop,
                                              query->sorted_lower_envelop, bounds_keogh_1, start, query->length, mean,
                                              std, bsf);
+
             if (lb_keogh_1 >= bsf) {
                 goto UPDATE_STATISTICS;
-            }
-
-            // TODO Note that for better optimization, this can be merged into the previous lb_keogh_cumulative
-            for (i = 0; i < query->length; ++i) {
-                current_normalized[i] = (current[(start + i)] - mean) / std;
             }
 
             lb_keogh_2 = lb_keogh_data_cumulative(query->sorted_indexes, current_normalized,
