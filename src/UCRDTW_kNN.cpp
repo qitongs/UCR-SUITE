@@ -9,6 +9,7 @@
 #include <iostream>
 #include <queue>
 #include <vector>
+#include <chrono>
 
 #include <boost/thread.hpp>
 
@@ -35,7 +36,7 @@ struct compare {
 };
 
 void conduct_query(const Sequence *sequence, const Query *query, const Parameters *parameters, int sequence_id,
-                   int query_id, boost::mutex *results_mutex, ofstream *results_ofs, clock_t start_time,
+                   int query_id, boost::mutex *results_mutex, ofstream *results_ofs, const chrono::time_point<chrono::high_resolution_clock> *start_time,
                    atomic<int> *processed) {
     int i, num_to_skip = 0, next = 0, epoch_size = parameters->epoch, num_epoches = 0, to_calculate, start, position_in_epoch, location;
     double sum, squared_sum, mean, std, bsf = INF, distance = 0, lb_kim = 0, lb_keogh_1 = 0, lb_keogh_2 = 0;
@@ -175,7 +176,8 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
         bsf_pq.pop();
     }
 
-    cout << ++*processed << " in " << (clock() - start_time) / CLOCKS_PER_SEC << "s" << endl;
+    chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - *start_time;
+    cout << ++*processed << " in " << elapsed.count() << "s" << endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -192,7 +194,7 @@ int main(int argc, char *argv[]) {
     }
 
     int size, length, id;
-    clock_t start_time = clock();
+    auto start_time = chrono::high_resolution_clock::now();
 
     database_ifs >> size;
     vector<const Sequence *> sequences;
@@ -223,12 +225,13 @@ int main(int argc, char *argv[]) {
     }
     queries_ifs.close();
 
-    cout << "load in " << (clock() - start_time) / CLOCKS_PER_SEC << "s" << endl;
+    chrono::duration<double> elapsed = chrono::high_resolution_clock::now() - start_time;
+    cout << "load in " << elapsed.count() << "s" << endl;
 
     {
         ThreadPool threadPool;
         atomic<int> processed{0};
-        start_time = clock();
+        start_time = std::chrono::high_resolution_clock::now();
 
         for (int i = 0; i < (int) sequences.size(); ++i) {
             for (int j = 0; j < (int) queries.size(); ++j) {
@@ -238,7 +241,7 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
                 threadPool.enqueue(boost::bind(conduct_query, sequences[i], queries[j], &parameters, sequence_ids[i],
-                                               query_ids[j], &results_mutex, &results_ofs, start_time, &processed));
+                                               query_ids[j], &results_mutex, &results_ofs, &start_time, &processed));
             }
         }
     }
