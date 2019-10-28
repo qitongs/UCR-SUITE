@@ -5,8 +5,72 @@
 #ifndef UCR_SUITE_BOUNDS_H
 #define UCR_SUITE_BOUNDS_H
 
-#include "circular_array.h"
 #include "utils.h"
+
+// TODO depreciate CircularArray, perhaps by boost's circular buffer or more efficient implementation
+
+// Data structure (circular array) for finding minimum and maximum for LB_Keogh envolop
+struct CircularArray {
+    int *dq;
+    int size, capacity;
+    int f, r;
+};
+
+// Initial the queue at the beginning step of envelop calculation
+void init(CircularArray *d, int capacity) {
+    d->capacity = capacity;
+    d->size = 0;
+    d->dq = (int *) malloc(sizeof(int) * d->capacity);
+    d->f = 0;
+    d->r = d->capacity - 1;
+}
+
+// Destroy the queue
+void destroy(CircularArray *d) {
+    free(d->dq);
+}
+
+// Insert to the queue at the back
+void push_back(struct CircularArray *d, int v) {
+    d->dq[d->r] = v;
+    d->r--;
+    if (d->r < 0)
+        d->r = d->capacity - 1;
+    d->size++;
+}
+
+// Delete the current (front) element from queue
+void pop_front(struct CircularArray *d) {
+    d->f--;
+    if (d->f < 0)
+        d->f = d->capacity - 1;
+    d->size--;
+}
+
+// Delete the last element from queue
+void pop_back(struct CircularArray *d) {
+    d->r = (d->r + 1) % d->capacity;
+    d->size--;
+}
+
+// Get the value at the current position of the circular queue
+int front(struct CircularArray *d) {
+    int aux = d->f - 1;
+    if (aux < 0)
+        aux = d->capacity - 1;
+    return d->dq[aux];
+}
+
+// Get the value at the last position of the circular queueint back(struct circular_array *d)
+int back(struct CircularArray *d) {
+    int aux = (d->r + 1) % d->capacity;
+    return d->dq[aux];
+}
+
+// Check whether or not the queue is empty
+int empty(struct CircularArray *d) {
+    return d->size == 0;
+}
 
 // TODO check the potential length = 0, warping_window = 0 problem
 /// Finding the envelop of min and max value for LB_Keogh
@@ -68,10 +132,11 @@ void get_envelops_lemire(const double *sequence, const int length, const int war
     destroy(&lower);
 }
 
-/// Usually, LB_Kim take time O(m) for finding top,bottom,fist and last.
-/// However, because of z-normalization the top and bottom cannot give significant benefits.
-/// And using the first and last points can be computed in constant time.
-/// The pruning power of LB_Kim is non-trivial, especially when the query is not long, say in length 128.
+// Usually, LB_Kim take time O(m) for finding top, bottom, first and last.
+// However, because of z-normalization the top and bottom cannot give significant benefits.
+// And using the first and last points can be computed in constant time.
+// The pruning power of LB_Kim is non-trivial, especially when the query is not long, say in length 128.
+// TODO bound_kim shall not apply when warping_window < 3 in this implementation
 double get_kim(const double *subsequence, const double *query_normalized, const int start, const int query_length,
                const double mean, const double std, const double bsf) {
     double distance, partial_bound;

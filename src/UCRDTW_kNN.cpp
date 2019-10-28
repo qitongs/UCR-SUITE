@@ -44,6 +44,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     priority_queue<Hit *, vector<Hit *>, compare> bsf_pq;
     Hit *hit;
     double *tighter_bounds_keogh;
+//    int skipped = 0, by_kim = 0, by_keogh = 0, by_keogh_converse = 0;
 
     auto buffer = (double *) malloc(sizeof(double) * parameters->epoch);
     auto upper_envelop = (double *) malloc(sizeof(double) * parameters->epoch);
@@ -88,40 +89,43 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
             // TODO skip the next following overlap sub-sequences to check is an easy but not optimal implementation
             if (num_to_skip-- > 0) {
+//                skipped += 1;
                 goto UPDATE_STATISTICS;
             }
 
             mean = sum / query->length;
             std = sqrt(squared_sum / query->length - mean * mean);
 
-            // TODO check kim's pruning power for long queries
-            if (query->length <= parameters->min_length_for_kim) {
-                // TODO bound_kim actaully won't apply when warping_window < 3
+//            if (query->length <= parameters->min_length_for_kim) {
                 bound_kim = get_kim(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
 
                 if (bound_kim >= bsf) {
+//                    by_kim += 1;
                     goto UPDATE_STATISTICS;
                 }
-            }
+//            }
 
             position_in_epoch = to_calculate + 1 - query->length;
             bound_keogh = get_keogh(query->sorted_indexes, subsequence, subsequence_normalized,
-                                 query->sorted_upper_envelop, query->sorted_lower_envelop, local_bounds_keogh, start,
-                                 query->length, mean, std, bsf);
+                                    query->sorted_upper_envelop, query->sorted_lower_envelop, local_bounds_keogh, start,
+                                    query->length, mean, std, bsf);
 
             if (bound_keogh >= bsf) {
+//                by_keogh += 1;
                 goto UPDATE_STATISTICS;
             }
 
             bound_keogh_converse = get_keogh_converse(query->sorted_indexes, query->sorted_normalized_points,
-                                                   local_bounds_keogh_converse, lower_envelop + position_in_epoch,
-                                                   upper_envelop + position_in_epoch, query->length, mean, std, bsf);
+                                                      local_bounds_keogh_converse, lower_envelop + position_in_epoch,
+                                                      upper_envelop + position_in_epoch, query->length, mean, std, bsf);
 
             if (bound_keogh_converse >= bsf) {
+//                by_keogh_converse += 1;
                 goto UPDATE_STATISTICS;
             }
 
-            tighter_bounds_keogh = bound_keogh > bound_keogh_converse ? local_bounds_keogh : local_bounds_keogh_converse;
+            tighter_bounds_keogh =
+                    bound_keogh > bound_keogh_converse ? local_bounds_keogh : local_bounds_keogh_converse;
             copy(tighter_bounds_keogh, tighter_bounds_keogh + query->length, bounds_keogh_remaining);
             for (i = query->length - 2; i >= 0; --i) {
                 bounds_keogh_remaining[i] += bounds_keogh_remaining[i + 1];
@@ -178,6 +182,8 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
     chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - *start_time;
     cout << ++*processed << " in " << elapsed.count() << "s" << endl;
+//    cout << query->length << " " << (double) skipped / sequence->length << " " << (double) by_kim / sequence->length
+//         << " " << (double) by_keogh / sequence->length << " " << (double) by_keogh_converse / sequence->length << endl;
 }
 
 int main(int argc, char *argv[]) {

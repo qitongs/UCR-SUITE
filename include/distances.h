@@ -5,72 +5,86 @@
 #ifndef UCR_SUITE_DISTANCES_H
 #define UCR_SUITE_DISTANCES_H
 
-/// Calculate Dynamic Time Wrapping distance
-/// A,B: data and query, respectively
-/// cb : cumulative bound used for early abandoning
-/// r  : size of Sakoe-Chiba warpping band
-double dtw(double *A, double *B, double *cb, int m, int r, double bsf = INF) {
+double dtw(const double *sequence, const double *query, const double *bounds_remaining, int length, int warping_window,
+           double bsf) {
 
-    double *cost;
-    double *cost_prev;
-    double *cost_tmp;
-    int i, j, k;
-    double x, y, z, min_cost;
+    double *distances, *distances_previous, *tmp;
+    int i, sequence_iter, query_iter, distances_iter;
+    double underneath, left, lower_left, partial_distance;
 
-    /// Instead of using matrix of size O(m^2) or O(mr), we will reuse two array of size O(r).
-    cost = (double *) malloc(sizeof(double) * (2 * r + 1));
-    for (k = 0; k < 2 * r + 1; k++) cost[k] = INF;
+    distances = (double *) malloc(sizeof(double) * (2 * warping_window + 1));
+    for (i = 0; i < 2 * warping_window + 1; i++) {
+        distances[i] = INF;
+    }
 
-    cost_prev = (double *) malloc(sizeof(double) * (2 * r + 1));
-    for (k = 0; k < 2 * r + 1; k++) cost_prev[k] = INF;
+    distances_previous = (double *) malloc(sizeof(double) * (2 * warping_window + 1));
+    for (i = 0; i < 2 * warping_window + 1; i++) {
+        distances_previous[i] = INF;
+    }
 
-    for (i = 0; i < m; i++) {
-        k = max(0, r - i);
-        min_cost = INF;
+    for (sequence_iter = 0; sequence_iter < length; sequence_iter++) {
+        distances_iter = max(0, warping_window - sequence_iter);
+        partial_distance = INF;
 
-        for (j = max(0, i - r); j <= min(m - 1, i + r); j++, k++) {
-            /// Initialize all row and column
-            if ((i == 0) && (j == 0)) {
-                cost[k] = dist(A[0], B[0]);
-                min_cost = cost[k];
+        for (query_iter = max(0, sequence_iter - warping_window);
+             query_iter <= min(length - 1, sequence_iter + warping_window);
+             query_iter++, distances_iter++) {
+
+            if ((sequence_iter == 0) && (query_iter == 0)) {
+                distances[distances_iter] = dist(sequence[0], query[0]);
+                partial_distance = distances[distances_iter];
                 continue;
             }
 
-            if ((j - 1 < 0) || (k - 1 < 0)) y = INF;
-            else y = cost[k - 1];
-            if ((i - 1 < 0) || (k + 1 > 2 * r)) x = INF;
-            else x = cost_prev[k + 1];
-            if ((i - 1 < 0) || (j - 1 < 0)) z = INF;
-            else z = cost_prev[k];
+            // query is horizontal
+            if ((query_iter == 0) || (distances_iter == 0)) {
+                left = INF;
+            } else {
+                left = distances[distances_iter - 1];
+            }
 
-            /// Classic DTW calculation
-            cost[k] = min(min(x, y), z) + dist(A[i], B[j]);
+            // sequence is vertical
+            if ((sequence_iter == 0) || (distances_iter + 1 > 2 * warping_window)) {
+                underneath = INF;
+            } else {
+                underneath = distances_previous[distances_iter + 1];
+            }
 
-            /// Find minimum cost in row for early abandoning (possibly to use column instead of row).
-            if (cost[k] < min_cost) {
-                min_cost = cost[k];
+            if ((sequence_iter == 0) || (query_iter == 0)) {
+                lower_left = INF;
+            } else {
+                lower_left = distances_previous[distances_iter];
+            }
+
+            distances[distances_iter] = min(min(underneath, left), lower_left)
+                                        + dist(sequence[sequence_iter], query[query_iter]);
+
+            // Find minimum distances in row for early abandoning (possibly to use column instead of row)
+            // TODO any hint for a tighter bound?
+            if (distances[distances_iter] < partial_distance) {
+                partial_distance = distances[distances_iter];
             }
         }
 
-        /// We can abandon early if the current cummulative distace with lower bound together are larger than bsf
-        if (i + r < m - 1 && min_cost + cb[i + r + 1] >= bsf) {
-            free(cost);
-            free(cost_prev);
-            return min_cost + cb[i + r + 1];
+        if (partial_distance + bounds_remaining[sequence_iter + warping_window + 1] >= bsf &&
+            sequence_iter + warping_window < length - 1) {
+            free(distances);
+            free(distances_previous);
+            return partial_distance + bounds_remaining[sequence_iter + warping_window + 1];
         }
 
-        /// Move current array to previous array.
-        cost_tmp = cost;
-        cost = cost_prev;
-        cost_prev = cost_tmp;
+        tmp = distances;
+        distances = distances_previous;
+        distances_previous = tmp;
     }
-    k--;
 
-    /// the DTW distance is in the last cell in the matrix of size O(m^2) or at the middle of our array.
-    double final_dtw = cost_prev[k];
-    free(cost);
-    free(cost_prev);
-    return final_dtw;
+    distances_iter -= 1;
+    double distance = distances_previous[distances_iter];
+
+    free(distances);
+    free(distances_previous);
+
+    return distance;
 }
 
 #endif //UCR_SUITE_DISTANCES_H
