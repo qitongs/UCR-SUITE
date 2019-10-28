@@ -10,9 +10,9 @@
 
 #include <iostream>
 
-#define min(x, y) ((x)<(y)?(x):(y))
-#define max(x, y) ((x)>(y)?(x):(y))
-#define dist(x, y) ((x-y)*(x-y))
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#define max(x, y) ((x) > (y) ? (x) : (y))
+#define dist(x, y) (((x) - (y)) * ((x) - (y)))
 
 #define INF 1e20
 

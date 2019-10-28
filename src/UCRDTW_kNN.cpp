@@ -36,10 +36,11 @@ struct compare {
 };
 
 void conduct_query(const Sequence *sequence, const Query *query, const Parameters *parameters, int sequence_id,
-                   int query_id, boost::mutex *results_mutex, ofstream *results_ofs, const chrono::time_point<chrono::high_resolution_clock> *start_time,
+                   int query_id, boost::mutex *results_mutex, ofstream *results_ofs,
+                   const chrono::time_point<chrono::high_resolution_clock> *start_time,
                    atomic<int> *processed) {
     int i, num_to_skip = 0, next = 0, epoch_size = parameters->epoch, num_epoches = 0, to_calculate, start, position_in_epoch, location;
-    double sum, squared_sum, mean, std, bsf = INF, distance = 0, lb_kim = 0, lb_keogh_1 = 0, lb_keogh_2 = 0;
+    double sum, squared_sum, mean, std, bsf = INF, distance = 0, lb_kim = 0, bound_keogh = 0, bound_keogh_converse = 0;
     priority_queue<Hit *, vector<Hit *>, compare> bsf_pq;
     Hit *hit;
     double *tighter_bounds_keogh;
@@ -47,15 +48,15 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     auto buffer = (double *) malloc(sizeof(double) * parameters->epoch);
     auto upper_envelop = (double *) malloc(sizeof(double) * parameters->epoch);
     auto lower_envelop = (double *) malloc(sizeof(double) * parameters->epoch);
-    auto current = (double *) malloc(sizeof(double) * query->length * 2);
-    auto current_normalized = (double *) malloc(sizeof(double) * query->length);
-    auto bounds_keogh_left = (double *) malloc(sizeof(double) * query->length);
-    auto bounds_keogh_1 = (double *) malloc(sizeof(double) * query->length);
-    auto bounds_keogh_2 = (double *) malloc(sizeof(double) * query->length);
+    auto subsequence = (double *) malloc(sizeof(double) * query->length * 2);
+    auto subsequence_normalized = (double *) malloc(sizeof(double) * query->length);
+    auto bounds_keogh_remaining = (double *) malloc(sizeof(double) * query->length);
+    auto local_bounds_keogh = (double *) malloc(sizeof(double) * query->length);
+    auto local_bounds_keogh_converse = (double *) malloc(sizeof(double) * query->length);
 
-    if (buffer == nullptr || upper_envelop == nullptr || lower_envelop == nullptr || current == nullptr ||
-        current_normalized == nullptr || bounds_keogh_left == nullptr || bounds_keogh_1 == nullptr ||
-        bounds_keogh_2 == nullptr) {
+    if (buffer == nullptr || upper_envelop == nullptr || lower_envelop == nullptr || subsequence == nullptr ||
+        subsequence_normalized == nullptr || bounds_keogh_remaining == nullptr || local_bounds_keogh == nullptr ||
+        local_bounds_keogh_converse == nullptr) {
         error(1);
     }
 
@@ -74,8 +75,8 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
         lower_upper_lemire(buffer, epoch_size, query->warping_window, lower_envelop, upper_envelop);
 
         for (to_calculate = 0; to_calculate < epoch_size; ++to_calculate) {
-            current[to_calculate % query->length] = buffer[to_calculate];
-            current[(to_calculate % query->length) + query->length] = buffer[to_calculate];
+            subsequence[to_calculate % query->length] = buffer[to_calculate];
+            subsequence[(to_calculate % query->length) + query->length] = buffer[to_calculate];
 
             sum += buffer[to_calculate];
             squared_sum += (buffer[to_calculate] * buffer[to_calculate]);
@@ -93,37 +94,36 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
             mean = sum / query->length;
             std = sqrt(squared_sum / query->length - mean * mean);
-            lb_kim = lb_kim_hierarchy(current, query->normalized_points, start, query->length, mean, std, bsf);
+            lb_kim = get_kim_hierarchy(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
 
             if (lb_kim >= bsf) {
                 goto UPDATE_STATISTICS;
             }
 
             position_in_epoch = to_calculate + 1 - query->length;
-            lb_keogh_1 = lb_keogh_cumulative(query->sorted_indexes, current, current_normalized, query->sorted_upper_envelop,
-                                             query->sorted_lower_envelop, bounds_keogh_1, start, query->length, mean,
-                                             std, bsf);
+            bound_keogh = get_keogh(query->sorted_indexes, subsequence, subsequence_normalized,
+                                 query->sorted_upper_envelop, query->sorted_lower_envelop, local_bounds_keogh, start,
+                                 query->length, mean, std, bsf);
 
-            if (lb_keogh_1 >= bsf) {
+            if (bound_keogh >= bsf) {
                 goto UPDATE_STATISTICS;
             }
 
-            lb_keogh_2 = lb_keogh_data_cumulative(query->sorted_indexes, current_normalized,
-                                                  query->sorted_normalized_points, bounds_keogh_2,
-                                                  lower_envelop + position_in_epoch, upper_envelop + position_in_epoch,
-                                                  query->length, mean, std, bsf);
+            bound_keogh_converse = get_keogh_converse(query->sorted_indexes, query->sorted_normalized_points,
+                                                   local_bounds_keogh_converse, lower_envelop + position_in_epoch,
+                                                   upper_envelop + position_in_epoch, query->length, mean, std, bsf);
 
-            if (lb_keogh_2 >= bsf) {
+            if (bound_keogh_converse >= bsf) {
                 goto UPDATE_STATISTICS;
             }
 
-            tighter_bounds_keogh = lb_keogh_1 > lb_keogh_2 ? bounds_keogh_1 : bounds_keogh_2;
-            copy(tighter_bounds_keogh, tighter_bounds_keogh + query->length, bounds_keogh_left);
+            tighter_bounds_keogh = bound_keogh > bound_keogh_converse ? local_bounds_keogh : local_bounds_keogh_converse;
+            copy(tighter_bounds_keogh, tighter_bounds_keogh + query->length, bounds_keogh_remaining);
             for (i = query->length - 2; i >= 0; --i) {
-                bounds_keogh_left[i] += bounds_keogh_left[i + 1];
+                bounds_keogh_remaining[i] += bounds_keogh_remaining[i + 1];
             }
 
-            distance = dtw(current_normalized, query->normalized_points, bounds_keogh_left, query->length,
+            distance = dtw(subsequence_normalized, query->normalized_points, bounds_keogh_remaining, query->length,
                            query->warping_window, bsf);
 
             if (distance < bsf) {
@@ -142,8 +142,8 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             }
 
             UPDATE_STATISTICS:
-            sum -= current[start];
-            squared_sum -= (current[start] * current[start]);
+            sum -= subsequence[start];
+            squared_sum -= (subsequence[start] * subsequence[start]);
         }
         num_epoches += 1;
     }
@@ -151,11 +151,11 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     free(buffer);
     free(upper_envelop);
     free(lower_envelop);
-    free(current);
-    free(current_normalized);
-    free(bounds_keogh_left);
-    free(bounds_keogh_1);
-    free(bounds_keogh_2);
+    free(subsequence);
+    free(subsequence_normalized);
+    free(bounds_keogh_remaining);
+    free(local_bounds_keogh);
+    free(local_bounds_keogh_converse);
 
     {
         // TODO asynchronously write to file (but not critical)

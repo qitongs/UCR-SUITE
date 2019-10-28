@@ -59,7 +59,7 @@ void lower_upper_lemire(double *t, int len, int r, double *l, double *u) {
 /// However, because of z-normalization the top and bottom cannot give significant benefits.
 /// And using the first and last points can be computed in constant time.
 /// The prunning power of LB_Kim is non-trivial, especially when the query is not long, say in length 128.
-double lb_kim_hierarchy(double *t, double *q, int j, int len, double mean, double std, double bsf = INF) {
+double get_kim_hierarchy(double *t, double *q, int j, int len, double mean, double std, double bsf = INF) {
     /// 1 point at front and back
     double d, lb;
     double x0 = (t[j] - mean) / std;
@@ -101,59 +101,52 @@ double lb_kim_hierarchy(double *t, double *q, int j, int len, double mean, doubl
     return lb;
 }
 
-/// LB_Keogh 1: Create Envelop for the query
-/// Note that because the query is known, envelop can be created once at the begenining.
-///
-/// Variable Explanation,
-/// order : sorted indices for the query.
-/// uo, lo: upper and lower envelops for the query, which already sorted.
-/// t     : a circular array keeping the current data.
-/// j     : index of the starting location in t
-/// cb    : (output) current bound at each position. It will be used later for early abandoning in DTW.
-double lb_keogh_cumulative(int *order, double *t, double *tz, double *uo, double *lo, double *cb, int j, int len, double mean,
-                           double std, double best_so_far = INF) {
-    double lb = 0, d;
+double get_keogh(const int *query_sorted_indices, const double *subsequence, double *subsequence_normalized,
+                 const double *query_upper_envelop, const double *query_lower_envelop, double *local_bounds,
+                 const int start, const int query_length, const double mean, const double std, const double bsf) {
+    double partial_bound = 0, local_distance;
 
-    for (int i = 0; i < len && lb < best_so_far; i++) {
-        tz[order[i]] = (t[(order[i] + j)] - mean) / std;
-        d = 0;
-        if (tz[order[i]] > uo[i])
-            d = dist(tz[order[i]], uo[i]);
-        else if (tz[order[i]] < lo[i])
-            d = dist(tz[order[i]], lo[i]);
-        lb += d;
-        cb[order[i]] = d;
+    for (int i = 0; i < query_length && partial_bound < bsf; i++) {
+        subsequence_normalized[query_sorted_indices[i]] = (subsequence[start + query_sorted_indices[i]] - mean) / std;
+
+        local_distance = 0;
+        if (subsequence_normalized[query_sorted_indices[i]] > query_upper_envelop[i]) {
+            local_distance = dist(subsequence_normalized[query_sorted_indices[i]], query_upper_envelop[i]);
+        } else if (subsequence_normalized[query_sorted_indices[i]] < query_lower_envelop[i]) {
+            local_distance = dist(subsequence_normalized[query_sorted_indices[i]], query_lower_envelop[i]);
+        }
+
+        partial_bound += local_distance;
+        local_bounds[query_sorted_indices[i]] = local_distance;
     }
-    return lb;
+
+    return partial_bound;
 }
 
-/// LB_Keogh 2: Create Envelop for the data
-/// Note that the envelops have been created (in main function) when each data point has been read.
-///
-/// Variable Explanation,
-/// tz: Z-normalized data
-/// qo: sorted query
-/// cb: (output) current bound at each position. Used later for early abandoning in DTW.
-/// l,u: lower and upper envelop of the current data
-double lb_keogh_data_cumulative(int *order, double *tz, double *qo, double *cb, double *l, double *u, int len,
-                                double mean, double std, double best_so_far = INF) {
-    double lb = 0;
-    double uu, ll, d;
+double get_keogh_converse(const int *query_sorted_indices, const double *query_sorted_normalized_values,
+                          double *local_bounds, const double *subsequence_lower_envelop,
+                          const double *subsequence_upper_envelop, const int query_length, const double mean,
+                          const double std, const double bsf) {
+    double partial_bound = 0, normalized_upper_envelop, normalized_lower_envelop, local_distance;
 
-    for (int i = 0; i < len && lb < best_so_far; i++) {
-        uu = (u[order[i]] - mean) / std;
-        ll = (l[order[i]] - mean) / std;
-        d = 0;
-        if (qo[i] > uu)
-            d = dist(qo[i], uu);
-        else {
-            if (qo[i] < ll)
-                d = dist(qo[i], ll);
+    for (int i = 0; i < query_length && partial_bound < bsf; i++) {
+        normalized_upper_envelop = (subsequence_upper_envelop[query_sorted_indices[i]] - mean) / std;
+
+        local_distance = 0;
+        if (query_sorted_normalized_values[i] > normalized_upper_envelop) {
+            local_distance = dist(query_sorted_normalized_values[i], normalized_upper_envelop);
+        } else {
+            normalized_lower_envelop = (subsequence_lower_envelop[query_sorted_indices[i]] - mean) / std;
+            if (query_sorted_normalized_values[i] < normalized_lower_envelop) {
+                local_distance = dist(query_sorted_normalized_values[i], normalized_lower_envelop);
+            }
         }
-        lb += d;
-        cb[order[i]] = d;
+
+        partial_bound += local_distance;
+        local_bounds[query_sorted_indices[i]] = local_distance;
     }
-    return lb;
+
+    return partial_bound;
 }
 
 #endif //UCR_SUITE_BOUNDS_H
