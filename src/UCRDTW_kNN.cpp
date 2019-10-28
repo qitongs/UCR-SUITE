@@ -40,7 +40,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                    const chrono::time_point<chrono::high_resolution_clock> *start_time,
                    atomic<int> *processed) {
     int i, num_to_skip = 0, next = 0, epoch_size = parameters->epoch, num_epoches = 0, to_calculate, start, position_in_epoch, location;
-    double sum, squared_sum, mean, std, bsf = INF, distance = 0, bound_kim = 0, bound_keogh = 0, bound_keogh_converse = 0;
+    double bsf = INF, distance = 0, bound_kim = 0, bound_keogh = 0, bound_keogh_converse = 0;
     priority_queue<Hit *, vector<Hit *>, compare> bsf_pq;
     Hit *hit;
     double *tighter_bounds_keogh;
@@ -50,14 +50,12 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     auto upper_envelop = (double *) malloc(sizeof(double) * parameters->epoch);
     auto lower_envelop = (double *) malloc(sizeof(double) * parameters->epoch);
     auto subsequence = (double *) malloc(sizeof(double) * query->length * 2);
-    auto subsequence_normalized = (double *) malloc(sizeof(double) * query->length);
     auto bounds_keogh_remaining = (double *) malloc(sizeof(double) * query->length);
     auto local_bounds_keogh = (double *) malloc(sizeof(double) * query->length);
     auto local_bounds_keogh_converse = (double *) malloc(sizeof(double) * query->length);
 
     if (buffer == nullptr || upper_envelop == nullptr || lower_envelop == nullptr || subsequence == nullptr ||
-        subsequence_normalized == nullptr || bounds_keogh_remaining == nullptr || local_bounds_keogh == nullptr ||
-        local_bounds_keogh_converse == nullptr) {
+        bounds_keogh_remaining == nullptr || local_bounds_keogh == nullptr || local_bounds_keogh_converse == nullptr) {
         error(1);
     }
 
@@ -71,15 +69,11 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             next += (parameters->epoch - query->length + 1);
         }
 
-        sum = 0, squared_sum = 0;
         get_envelops_lemire(buffer, epoch_size, query->warping_window, lower_envelop, upper_envelop);
 
         for (to_calculate = 0; to_calculate < epoch_size; ++to_calculate) {
             subsequence[to_calculate % query->length] = buffer[to_calculate];
             subsequence[(to_calculate % query->length) + query->length] = buffer[to_calculate];
-
-            sum += buffer[to_calculate];
-            squared_sum += (buffer[to_calculate] * buffer[to_calculate]);
 
             if (to_calculate < query->length - 1) {
                 continue;
@@ -90,38 +84,34 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             // TODO skip the next following overlap sub-sequences to check is an easy but not optimal implementation
             if (num_to_skip-- > 0) {
 //                skipped += 1;
-                goto UPDATE_STATISTICS;
+                continue;
             }
 
-            mean = sum / query->length;
-            std = sqrt(squared_sum / query->length - mean * mean);
-
 //            if (query->length <= parameters->min_length_for_kim) {
-            bound_kim = get_kim(subsequence, query->normalized_values, start, query->length, mean, std, bsf);
+            bound_kim = get_kim(subsequence, query->values, start, query->length, bsf);
 
             if (bound_kim >= bsf) {
-//                    by_kim += 1;
-                goto UPDATE_STATISTICS;
+//                by_kim += 1;
+                continue;
             }
 //            }
 
             position_in_epoch = to_calculate + 1 - query->length;
-            bound_keogh = get_keogh(query->sorted_indexes, subsequence, subsequence_normalized,
-                                    query->sorted_upper_envelop, query->sorted_lower_envelop, local_bounds_keogh, start,
-                                    query->length, mean, std, bsf);
+            bound_keogh = get_keogh(query->sorted_indexes, subsequence, query->sorted_upper_envelop,
+                                    query->sorted_lower_envelop, local_bounds_keogh, start, query->length, bsf);
 
             if (bound_keogh >= bsf) {
 //                by_keogh += 1;
-                goto UPDATE_STATISTICS;
+                continue;
             }
 
-            bound_keogh_converse = get_keogh_converse(query->sorted_indexes, query->sorted_normalized_values,
+            bound_keogh_converse = get_keogh_converse(query->sorted_indexes, query->sorted_values,
                                                       local_bounds_keogh_converse, lower_envelop + position_in_epoch,
-                                                      upper_envelop + position_in_epoch, query->length, mean, std, bsf);
+                                                      upper_envelop + position_in_epoch, query->length, bsf);
 
             if (bound_keogh_converse >= bsf) {
 //                by_keogh_converse += 1;
-                goto UPDATE_STATISTICS;
+                continue;
             }
 
             tighter_bounds_keogh =
@@ -131,8 +121,8 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                 bounds_keogh_remaining[i] += bounds_keogh_remaining[i + 1];
             }
 
-            distance = dtw(subsequence_normalized, query->normalized_values, bounds_keogh_remaining, query->length,
-                           query->warping_window, bsf);
+            distance = dtw(subsequence, query->values, bounds_keogh_remaining, query->length, query->warping_window,
+                           bsf);
 
             if (distance < bsf) {
                 location = num_epoches * (parameters->epoch - query->length + 1) + to_calculate + 1 - query->length;
@@ -148,10 +138,6 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                 bsf = bsf_pq.top()->distance;
                 num_to_skip = query->overlap_length;
             }
-
-            UPDATE_STATISTICS:
-            sum -= subsequence[start];
-            squared_sum -= (subsequence[start] * subsequence[start]);
         }
         num_epoches += 1;
     }
@@ -160,7 +146,6 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
     free(upper_envelop);
     free(lower_envelop);
     free(subsequence);
-    free(subsequence_normalized);
     free(bounds_keogh_remaining);
     free(local_bounds_keogh);
     free(local_bounds_keogh_converse);
