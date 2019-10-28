@@ -10,7 +10,7 @@
 class Sequence {
 public:
     int length;
-    double *points;
+    double *values;
 
     Sequence(ifstream &sequence_ifs, int length);
 
@@ -19,19 +19,19 @@ public:
 
 Sequence::Sequence(ifstream &sequence_ifs, int length) {
     this->length = length;
-    this->points = (double *) malloc(sizeof(double) * length);
+    this->values = (double *) malloc(sizeof(double) * length);
 
-    if (this->points == nullptr) {
+    if (this->values == nullptr) {
         error(1);
     }
 
     for (int i = 0; i < length; ++i) {
-        sequence_ifs >> points[i];
+        sequence_ifs >> values[i];
     }
 }
 
 Sequence::~Sequence() {
-    free(this->points);
+    free(this->values);
 }
 
 #endif //UCR_SUITE_SEQUENCE_H

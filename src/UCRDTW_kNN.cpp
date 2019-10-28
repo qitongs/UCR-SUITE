@@ -63,11 +63,11 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
 
     while (next + query->length - 1 < sequence->length) {
         if (next + parameters->epoch > sequence->length) {
-            copy(sequence->points + next, sequence->points + sequence->length, buffer);
+            copy(sequence->values + next, sequence->values + sequence->length, buffer);
             epoch_size = sequence->length - next;
             next = sequence->length;
         } else {
-            copy(sequence->points + next, sequence->points + next + parameters->epoch, buffer);
+            copy(sequence->values + next, sequence->values + next + parameters->epoch, buffer);
             next += (parameters->epoch - query->length + 1);
         }
 
@@ -97,12 +97,12 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
             std = sqrt(squared_sum / query->length - mean * mean);
 
 //            if (query->length <= parameters->min_length_for_kim) {
-                bound_kim = get_kim(subsequence, query->normalized_points, start, query->length, mean, std, bsf);
+            bound_kim = get_kim(subsequence, query->normalized_values, start, query->length, mean, std, bsf);
 
-                if (bound_kim >= bsf) {
+            if (bound_kim >= bsf) {
 //                    by_kim += 1;
-                    goto UPDATE_STATISTICS;
-                }
+                goto UPDATE_STATISTICS;
+            }
 //            }
 
             position_in_epoch = to_calculate + 1 - query->length;
@@ -115,7 +115,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                 goto UPDATE_STATISTICS;
             }
 
-            bound_keogh_converse = get_keogh_converse(query->sorted_indexes, query->sorted_normalized_points,
+            bound_keogh_converse = get_keogh_converse(query->sorted_indexes, query->sorted_normalized_values,
                                                       local_bounds_keogh_converse, lower_envelop + position_in_epoch,
                                                       upper_envelop + position_in_epoch, query->length, mean, std, bsf);
 
@@ -131,7 +131,7 @@ void conduct_query(const Sequence *sequence, const Query *query, const Parameter
                 bounds_keogh_remaining[i] += bounds_keogh_remaining[i + 1];
             }
 
-            distance = dtw(subsequence_normalized, query->normalized_points, bounds_keogh_remaining, query->length,
+            distance = dtw(subsequence_normalized, query->normalized_values, bounds_keogh_remaining, query->length,
                            query->warping_window, bsf);
 
             if (distance < bsf) {
